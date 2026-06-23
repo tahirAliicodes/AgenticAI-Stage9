@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stage 9 — Observability Dashboard</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: monospace; background: #0a0d12; color: #c9d1dc; font-size: 14px; padding: 2rem; }
+h1 { font-size: 18px; font-weight: 500; color: #eef2f7; margin-bottom: 4px; }
+.sub { font-size: 11px; color: #5a6478; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 1.5rem; }
+button { background: transparent; border: 0.5px solid #2a3040; color: #c9d1dc; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; font-family: monospace; display: inline-flex; align-items: center; gap: 6px; }
+button:hover { background: #151a22; }
+
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 1.5rem; }
+.stat { background: #0f1318; border-radius: 8px; padding: 1rem; }
+.stat p:first-child { font-size: 12px; color: #5a6478; margin-bottom: 6px; }
+.stat p:last-child { font-size: 24px; font-weight: 500; color: #eef2f7; }
+
+.card { background: #0f1318; border: 0.5px solid #1e2530; border-radius: 10px; overflow: hidden; margin-bottom: 1.5rem; }
+.card-header { padding: 12px 16px; border-bottom: 0.5px solid #1e2530; font-size: 13px; font-weight: 500; color: #eef2f7; display: flex; justify-content: space-between; align-items: center; }
+
+.run-row { display: flex; align-items: center; gap: 10px; padding: 10px 16px; cursor: pointer; border-bottom: 0.5px solid #1e2530; transition: background 0.15s; }
+.run-row:last-child { border-bottom: none; }
+.run-row:hover { background: #151a22; }
+.dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.dot-ok { background: #22c55e; }
+.dot-error { background: #ef4444; }
+.dot-running { background: #f59e0b; }
+.task { flex: 1; min-width: 0; }
+.task p:first-child { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.task p:last-child { font-size: 11px; color: #5a6478; margin-top: 2px; }
+.meta { font-size: 12px; color: #5a6478; white-space: nowrap; }
+
+.span-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.span-label { font-size: 12px; color: #5a6478; width: 90px; flex-shrink: 0; }
+.bar-wrap { background: #151a22; border-radius: 4px; height: 8px; flex: 1; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 4px; }
+.span-ms { font-size: 12px; color: #5a6478; width: 60px; text-align: right; flex-shrink: 0; }
+.span-tok { font-size: 11px; color: #5a6478; width: 70px; text-align: right; flex-shrink: 0; }
+.error-text { font-size: 12px; color: #ef4444; margin-top: 12px; }
+.hidden { display: none; }
+</style>
+</head>
+<body>
+
+<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem;">
+  <div>
+    <p class="sub">Stage 9</p>
+    <h1>Observability dashboard</h1>
+  </div>
+  <button onclick="fetchTraces()"><i class="ti ti-refresh"></i> Refresh</button>
+</div>
+
+<div class="stats">
+  <div class="stat"><p>Total runs</p><p id="stat-runs">—</p></div>
+  <div class="stat"><p>Avg duration</p><p id="stat-avg">—</p></div>
+  <div class="stat"><p>Total tokens</p><p id="stat-tokens">—</p></div>
+  <div class="stat"><p>Success rate</p><p id="stat-success">—</p></div>
+</div>
+
+<div class="card">
+  <div class="card-header">Run history</div>
+  <div id="runs-list"><p style="padding:1rem 16px;color:#5a6478;font-size:13px;">Loading traces...</p></div>
+</div>
+
+<div class="card hidden" id="detail-panel">
+  <div class="card-header">
+    <span id="detail-title">Run detail</span>
+    <button onclick="closeDetail()"><i class="ti ti-x"></i></button>
+  </div>
+  <div id="detail-body" style="padding:16px;"></div>
+</div>
+
+<script>
+const COLORS = ['#185FA5','#0F6E56','#854F0B','#533AB7','#993556'];
+let allTraces = [];
+
+async function fetchTraces() {
+  try {
+    const res = await fetch('http://localhost:8000/traces');
+    if (!res.ok) throw new Error();
+    allTraces = await res.json();
+  } catch {
+    allTraces = getMockTraces();
+  }
+  renderTraces(allTraces);
+}
+
+function getMockTraces() {
+  return [
+    { trace_id:'abc123def456', task:'Research quantum computing trends', status:'ok', total_duration_ms:4230, started_at:new Date(Date.now()-3600000).toISOString(), spans:[{agent_name:'supervisor',duration_ms:4230,tokens_in:120,tokens_out:88,status:'ok'},{agent_name:'researcher',duration_ms:2800,tokens_in:340,tokens_out:890,status:'ok'},{agent_name:'writer',duration_ms:1100,tokens_in:890,tokens_out:440,status:'ok'}] },
+    { trace_id:'xyz789uvw012', task:'Summarize latest AI news', status:'ok', total_duration_ms:2870, started_at:new Date(Date.now()-7200000).toISOString(), spans:[{agent_name:'supervisor',duration_ms:2870,tokens_in:110,tokens_out:74,status:'ok'},{agent_name:'researcher',duration_ms:1900,tokens_in:280,tokens_out:610,status:'ok'},{agent_name:'writer',duration_ms:850,tokens_in:610,tokens_out:320,status:'ok'}] },
+    { trace_id:'err345fgh678', task:'Analyse competitor pricing', status:'error', total_duration_ms:1540, started_at:new Date(Date.now()-10800000).toISOString(), spans:[{agent_name:'supervisor',duration_ms:1540,tokens_in:130,tokens_out:60,status:'ok'},{agent_name:'researcher',duration_ms:1400,tokens_in:210,tokens_out:0,status:'error',error:'Search tool timeout'}] },
+  ];
+}
+
+function renderTraces(traces) {
+  const ok = traces.filter(t => t.status === 'ok').length;
+  const totalTok = traces.reduce((s,t) => s + t.spans.reduce((a,sp) => a+(sp.tokens_in||0)+(sp.tokens_out||0),0),0);
+  const avgMs = traces.length ? Math.round(traces.reduce((s,t) => s+(t.total_duration_ms||0),0)/traces.length) : 0;
+
+  document.getElementById('stat-runs').textContent = traces.length;
+  document.getElementById('stat-avg').textContent = avgMs >= 1000 ? (avgMs/1000).toFixed(1)+'s' : avgMs+'ms';
+  document.getElementById('stat-tokens').textContent = totalTok >= 1000 ? Math.round(totalTok/1000)+'k' : totalTok;
+  document.getElementById('stat-success').textContent = traces.length ? Math.round(ok/traces.length*100)+'%' : '—';
+
+  const list = document.getElementById('runs-list');
+  if (!traces.length) { list.innerHTML = '<p style="padding:1rem 16px;color:#5a6478;font-size:13px;">No traces yet.</p>'; return; }
+  list.innerHTML = traces.map(t => {
+    const ms = t.total_duration_ms >= 1000 ? (t.total_duration_ms/1000).toFixed(1)+'s' : Math.round(t.total_duration_ms)+'ms';
+    const tok = t.spans.reduce((a,sp)=>a+(sp.tokens_in||0)+(sp.tokens_out||0),0);
+    const ago = timeAgo(t.started_at);
+   const hasFailedSpan = t.spans.some(s => s.status === 'error');
+const dot = t.status === 'error' ? 'dot-error' : hasFailedSpan ? 'dot-warning' : 'dot-ok';
+    return `<div class="run-row" onclick="showDetail('${t.trace_id}')">
+      <div class="dot ${dot}"></div>
+      <div class="task"><p>${t.task}</p><p>${t.trace_id} · ${ago}</p></div>
+      <span class="meta">${ms}</span>
+      <span class="meta">${tok} tok</span>
+      <i class="ti ti-chevron-right" style="font-size:14px;color:#5a6478;"></i>
+    </div>`;
+  }).join('');
+}
+
+function showDetail(id) {
+  const t = allTraces.find(x => x.trace_id === id);
+  if (!t) return;
+  const maxMs = Math.max(...t.spans.map(s => s.duration_ms||0), 1);
+  document.getElementById('detail-title').textContent = t.task;
+  document.getElementById('detail-body').innerHTML = `
+    <p style="font-size:11px;color:#5a6478;margin-bottom:16px;">trace id: ${t.trace_id}</p>
+    <p style="font-size:12px;font-weight:500;color:#eef2f7;margin-bottom:10px;">Agent timings</p>
+    ${t.spans.map((s,i) => {
+      const pct = Math.round((s.duration_ms||0)/maxMs*100);
+      const ms = s.duration_ms >= 1000 ? (s.duration_ms/1000).toFixed(1)+'s' : Math.round(s.duration_ms)+'ms';
+      const tok = (s.tokens_in||0)+(s.tokens_out||0);
+      const color = s.status==='error'?'#ef4444':COLORS[i%COLORS.length];
+      return `<div class="span-row">
+        <span class="span-label">${s.agent_name}</span>
+        <div class="bar-wrap"><div class="bar-fill" style="width:${pct}%;background:${color};"></div></div>
+        <span class="span-ms">${ms}</span>
+        <span class="span-tok">${tok} tok</span>
+      </div>`;
+    }).join('')}
+    ${t.spans.find(s=>s.error) ? `<p class="error-text"><i class="ti ti-alert-circle"></i> ${t.spans.find(s=>s.error).error}</p>` : ''}
+  `;
+  document.getElementById('detail-panel').classList.remove('hidden');
+}
+
+function closeDetail() { document.getElementById('detail-panel').classList.add('hidden'); }
+
+function timeAgo(iso) {
+  const diff = Math.floor((Date.now()-new Date(iso))/1000);
+  if (diff < 60) return diff+'s ago';
+  if (diff < 3600) return Math.floor(diff/60)+'m ago';
+  if (diff < 86400) return Math.floor(diff/3600)+'h ago';
+  return Math.floor(diff/86400)+'d ago';
+}
+
+fetchTraces();
+</script>
+</body>
+</html>

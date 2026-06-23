@@ -1,0 +1,50 @@
+{
+  "trace_id": "91c18f95-098",
+  "task": "UAV systems ",
+  "started_at": "2026-06-19T09:34:11.770954",
+  "ended_at": "2026-06-19T09:34:55.531988",
+  "total_duration_ms": 43761.034,
+  "spans": [
+    {
+      "span_id": "aa200489",
+      "trace_id": "91c18f95-098",
+      "agent_name": "supervisor",
+      "started_at": "2026-06-19T09:34:11.770954",
+      "ended_at": "2026-06-19T09:34:55.531988",
+      "duration_ms": 43761.034,
+      "tokens_in": 0,
+      "tokens_out": 0,
+      "status": "ok",
+      "error": null,
+      "metadata": {}
+    },
+    {
+      "span_id": "0062156a",
+      "trace_id": "91c18f95-098",
+      "agent_name": "research",
+      "started_at": "2026-06-19T09:34:24.042336",
+      "ended_at": "2026-06-19T09:34:34.595265",
+      "duration_ms": 10552.929,
+      "tokens_in": 0,
+      "tokens_out": 75,
+      "status": "ok",
+      "error": null,
+      "metadata": {}
+    },
+    {
+      "span_id": "f0d87ba0",
+      "trace_id": "91c18f95-098",
+      "agent_name": "writer",
+      "started_at": "2026-06-19T09:34:43.298596",
+      "ended_at": "2026-06-19T09:34:51.471789",
+      "duration_ms": 8173.192999999999,
+      "tokens_in": 0,
+      "tokens_out": 199,
+      "status": "ok",
+      "error": null,
+      "metadata": {}
+    }
+  ],
+  "status": "ok",
+  "eva_score": null
+}

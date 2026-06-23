@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>HITL Control Panel</title>
+    <style>
+        body { font-family: monospace; background: #1e1e1e; color: #d4d4d4; padding: 20px; }
+        button { padding: 8px 16px; margin: 5px; cursor: pointer; border: none; border-radius: 4px; }
+        .approve { background: #4caf50; color: white; }
+        .reject { background: #f44336; color: white; }
+        .start { background: #2196f3; color: white; }
+        #log { background: #252526; padding: 10px; height: 400px; overflow-y: auto; margin-top: 20px; }
+        input { padding: 8px; width: 300px; background: #3c3c3c; color: white; border: 1px solid #555; }
+    </style>
+</head>
+<body>
+    <h2>🐺 HITL Control Panel</h2>
+    <input id="query" type="text" placeholder="Enter query..." value="quantum computing" />
+    <button class="start" onclick="startQuery()">▶ Start</button>
+
+    <div>
+        <button class="approve" onclick="decide('approve', 'research')">✅ Approve Research</button>
+        <button class="reject" onclick="decide('reject', 'research')">❌ Reject Research</button>
+    </div>
+    <div>
+        <button class="approve" onclick="decide('approve', 'analysis')">✅ Approve Analysis</button>
+        <button class="reject" onclick="decide('reject', 'analysis')">❌ Reject Analysis</button>
+    </div>
+    <div>
+        <button class="approve" onclick="decide('approve', 'writer')">✅ Approve Writer</button>
+        <button class="reject" onclick="decide('reject', 'writer')">❌ Reject Writer</button>
+    </div>
+
+    <div id="log"></div>
+
+    <script>
+        const log = document.getElementById('log');
+
+        function addLog(msg, color='#d4d4d4') {
+            log.innerHTML += `<div style="color:${color}">${msg}</div>`;
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function startQuery() {
+            const query = document.getElementById('query').value;
+            log.innerHTML = '';
+            addLog(`Starting: ${query}`, '#2196f3');
+
+            const es = new EventSource(`http://127.0.0.1:8000/orchestrate/stream?query=${encodeURIComponent(query)}`);
+            es.onmessage = e => {
+                const data = JSON.parse(e.data);
+                const color = data.status === 'awaiting_approval' ? '#ffeb3b' :
+                              data.status === 'done' ? '#4caf50' :
+                              data.status === 'error' ? '#f44336' : '#d4d4d4';
+                const score = data.score ? ` | EVA: ${data.score}/10 — ${data.reason}` : '';
+addLog(`[${data.agent}] ${data.status}: ${data.msg}${score}`, color);
+                if (data.status === 'final') es.close();
+            };
+        }
+
+        function decide(action, agent) {
+            fetch(`http://127.0.0.1:8000/${action}/${agent}`, { method: 'POST' })
+                .then(() => addLog(`→ ${action}d ${agent}`, action === 'approve' ? '#4caf50' : '#f44336'));
+        }
+
+    </script>
+</body>
+</html>
